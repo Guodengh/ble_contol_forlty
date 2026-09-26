@@ -2,7 +2,7 @@
 
 用浏览器通过蓝牙控制应援棒配色的网页控制台。不用装 App、不用后端，打开网页就能调色。
 
-> 在线使用：[https://ltykawaii.github.io/]
+> 在线使用[web控制台](https://ltykawaii.github.io/)
 
 ## 功能
 
