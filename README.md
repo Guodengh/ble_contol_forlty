@@ -51,13 +51,6 @@
 
 必须通过 HTTPS 或 localhost 访问——GitHub Pages 默认就是 HTTPS。另外配对必须由你手动点击触发，不能用脚本自动完成，这是浏览器的安全要求。
 
-## 部署到 GitHub Pages
-
-1. 把 `web_controller.html` 重命名为 `index.html`（Pages 默认以它作为首页）
-2. 推送到默认分支
-3. 仓库 **Settings → Pages**，Source 选 `Deploy from a branch`，分支选 `main`，目录选 `/ (root)`
-4. 等一两分钟，访问 `https://<你的用户名>.github.io/<仓库名>/`
-
 ## 文件
 
 ```
