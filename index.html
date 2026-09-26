@@ -831,6 +831,14 @@
             log_area.scrollTop = log_area.scrollHeight
         }
 
+        async function auth(value){
+            if (value == 'AUTH_PASS'){
+                log("鉴权通过", "ok")
+            }else{
+                let secret = prompt("请输入密钥以激活").trim()
+                await txChar.writeValue(new TextEncoder().encode(secret))
+            }
+        }
         async function connect() {
             try {
                 device = await navigator.bluetooth.requestDevice(
@@ -863,15 +871,22 @@
                 txChar = await svc.getCharacteristic(tx_uuid); // 发送
 
                 rxChar.startNotifications() //订阅消息
-                rxChar.addEventListener("characteristicvaluechanged", (event) => {
+                rxChar.addEventListener("characteristicvaluechanged", async (event) => {
                     let textdecoder = new TextDecoder()
-                    value = textdecoder.decode(event.target.value).trim()
+                    let value = textdecoder.decode(event.target.value).trim()
+                    if (value.includes('AUTH')){
+                        await auth(value)
+                        return
+                    }
                     log(value, 'get')
                 })
 
                 connected = true
                 set_status(device.name || "已连接", "ok")
                 log("已连接：" + (device.name || "(无名设备)"), "ok");
+
+                log("鉴权中……")
+                txChar.writeValue(new TextEncoder().encode("AUTH?"))
             } catch (e) {
                 connected = false
                 set_status("连接失败", "err")
