@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>应援棒控制</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #66ccff;
+            --accent-dim: rgba(102, 204, 255, .13);
+            --bg: #080b12;
+            --text: #e9eef8;
+            --muted: #7f8ca6;
+            --line: rgba(255, 255, 255, .09);
+
+            /* 三个通道各自的颜色 */
+            --r: #ff5470;
+            --g: #34e08a;
+            --b: #66ccff;
+
+            --ok: #4ade80;
+            --err: #f87171;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            padding: 28px 16px 64px;
+            color: var(--text);
+            font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background:
+                radial-gradient(900px 520px at 12% -12%, rgba(102, 204, 255, .20), transparent 62%),
+                radial-gradient(760px 500px at 112% 6%, rgba(255, 84, 112, .13), transparent 62%),
+                radial-gradient(760px 520px at 45% 118%, rgba(52, 224, 138, .10), transparent 62%),
+                var(--bg);
+            background-attachment: fixed;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 620px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* ---------- 顶部标题栏 ---------- */
+        .head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 0 4px 2px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .logo {
+            width: 38px;
+            height: 38px;
+            flex: none;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #9fe2ff, var(--accent) 55%, #2f8fd0);
+            box-shadow: 0 8px 22px -8px var(--accent), inset 0 1px 0 rgba(255, 255, 255, .6);
+        }
+
+        .head h1 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: .5px;
+        }
+
+        .head .sub {
+            margin: 2px 0 0;
+            font-size: 11.5px;
+            color: var(--muted);
+            letter-spacing: .3px;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            flex: none;
+            padding: 7px 12px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .04);
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #56617a;
+            transition: .2s;
+        }
+
+        .status.wait .dot {
+            background: #fbbf24;
+            box-shadow: 0 0 0 4px rgba(251, 191, 36, .16);
+        }
+
+        .status.ok .dot {
+            background: var(--ok);
+            box-shadow: 0 0 0 4px rgba(74, 222, 128, .16);
+        }
+
+        .status.err .dot {
+            background: var(--err);
+            box-shadow: 0 0 0 4px rgba(248, 113, 113, .16);
+        }
+
+        /* ---------- 通用卡片 ---------- */
+        .card {
+            padding: 16px 18px;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .02));
+            backdrop-filter: blur(12px);
+            box-shadow: 0 14px 34px -22px #000, inset 0 1px 0 rgba(255, 255, 255, .05);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: .4px;
+        }
+
+        .card-title::before {
+            content: "";
+            width: 3px;
+            height: 13px;
+            margin-right: 8px;
+            border-radius: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .card-title>span:first-of-type {
+            flex: 1;
+        }
+
+        .hint {
+            font-size: 11.5px;
+            font-weight: 400;
+            color: var(--muted);
+        }
+
+        /* ---------- 取色预览 ---------- */
+        .preview-card {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .swatch {
+            position: relative;
+            flex: none;
+            width: 90px;
+            height: 90px;
+            border-radius: 24px;
+            background: #fff;
+            box-shadow:
+                inset 0 0 0 1px rgba(255, 255, 255, .22),
+                0 14px 38px -14px currentColor,
+                0 0 40px -18px currentColor;
+            transition: background .1s linear, box-shadow .25s ease;
+        }
+
+        .swatch::after {
+            content: "";
+            position: absolute;
+            inset: 6px 6px auto 6px;
+            height: 34%;
+            border-radius: 18px 18px 40% 40%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .38), transparent);
+            pointer-events: none;
+        }
+
+        .preview-info {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .hex {
+            font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            text-shadow: 0 0 22px rgba(102, 204, 255, .35);
+        }
+
+        .rgb-line {
+            margin-top: 6px;
+            font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
+
+        /* ---------- 滑块行 ---------- */
+        .row {
+            display: grid;
+            grid-template-columns: 30px minmax(0, 1fr) 78px;
+            align-items: center;
+            gap: 12px;
+            padding: 7px 0;
+        }
+
+        .tag {
+            display: grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: ui-monospace, Consolas, monospace;
+        }
+
+        .row[data-ch="r"] .tag {
+            color: var(--r);
+            border-color: rgba(255, 84, 112, .32);
+            background: rgba(255, 84, 112, .12);
+        }
+
+        .row[data-ch="g"] .tag {
+            color: var(--g);
+            border-color: rgba(52, 224, 138, .32);
+            background: rgba(52, 224, 138, .12);
+        }
+
+        .row[data-ch="b"] .tag {
+            color: var(--b);
+            border-color: rgba(102, 204, 255, .32);
+            background: rgba(102, 204, 255, .12);
+        }
+
+        /* 滑杆：--p 是填充百分比，--c 是本通道颜色，都由 JS 写入 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 24px;
+            margin: 0;
+            background: transparent;
+            cursor: pointer;
+            --p: 100%;
+            --c: #fff;
+            touch-action: pan-y;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 10px;
+            border-radius: 999px;
+            background: linear-gradient(90deg,
+                    var(--c) 0 var(--p),
+                    rgba(255, 255, 255, .09) var(--p) 100%);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            margin-top: -5px;
+            border: 3px solid var(--c);
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+            transition: transform .12s ease, box-shadow .18s ease;
+        }
+
+        input[type="range"]:hover::-webkit-slider-thumb {
+            transform: scale(1.08);
+        }
+
+        input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.18);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .65), 0 0 0 7px color-mix(in srgb, var(--c) 22%, transparent);
+        }
+
+        input[type="range"]:focus-visible {
+            outline: none;
+        }
+
+        input[type="range"]:focus-visible::-webkit-slider-thumb {
+            box-shadow: 0 0 0 6px color-mix(in srgb, var(--c) 30%, transparent);
+        }
+
+        /* Firefox */
+        input[type="range"]::-moz-range-track {
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .09);
+        }
+
+        input[type="range"]::-moz-range-progress {
+            height: 10px;
+            border-radius: 999px;
+            background: var(--c);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border: 3px solid var(--c);
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+        }
+
+        #r {
+            --c: var(--r);
+        }
+
+        #g {
+            --c: var(--g);
+        }
+
+        #b {
+            --c: var(--b);
+        }
+
+        /* ---------- 数值输入框（与滑杆联动、可键盘编辑） ---------- */
+        .num {
+            width: 100%;
+            padding: 9px 4px;
+            color: var(--text);
+            font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+            font-size: 14px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            text-align: center;
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid var(--line);
+            border-radius: 11px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s, background .15s;
+            --c: var(--accent);
+        }
+
+        #r_num {
+            --c: var(--r);
+        }
+
+        #g_num {
+            --c: var(--g);
+        }
+
+        #b_num {
+            --c: var(--b);
+        }
+
+        .num:hover {
+            background: rgba(255, 255, 255, .08);
+        }
+
+        .num:focus {
+            background: rgba(255, 255, 255, .07);
+            border-color: var(--c);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent);
+        }
+
+        .num.bad {
+            border-color: var(--err);
+            color: var(--err);
+        }
+
+        /* 隐藏原生上下小箭头，保留键盘上下键功能 */
+        .num::-webkit-outer-spin-button,
+        .num::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .num {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        /* ---------- 按钮 ---------- */
+        .btn {
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 11px 18px;
+            color: var(--text);
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, .1);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .btn.primary {
+            color: #04121d;
+            background: linear-gradient(180deg, #8fdcff, var(--accent));
+            border-color: rgba(102, 204, 255, .55);
+            box-shadow: 0 10px 26px -12px rgba(102, 204, 255, .9);
+        }
+
+        .btn.primary:hover {
+            filter: brightness(1.08);
+        }
+
+        .btn.tiny {
+            padding: 5px 10px;
+            font-size: 11.5px;
+            font-weight: 500;
+            color: var(--muted);
+            border-radius: 8px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .actions .primary {
+            flex: 1;
+        }
+
+        /* ---------- 预设颜色 ---------- */
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pre-color {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 13px 8px 9px;
+            font: inherit;
+            font-size: 13px;
+            color: var(--text);
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .pre-color:hover {
+            background: rgba(255, 255, 255, .1);
+            transform: translateY(-1px);
+        }
+
+        .pre-color i {
+            width: 14px;
+            height: 14px;
+            flex: none;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .45), 0 0 9px -1px currentColor;
+        }
+
+        .pre-color.active {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: 0 0 0 3px rgba(102, 204, 255, .1);
+        }
+
+        /* ---------- 日志 ---------- */
+        #log {
+            margin: 0;
+            max-height: 220px;
+            overflow: auto;
+            font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+            font-size: 12.5px;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            word-break: break-word;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, .18) transparent;
+        }
+
+        #log div {
+            padding: 2px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, .05);
+        }
+
+        #log div:last-child {
+            border-bottom: 0;
+        }
+
+        #log:empty::before {
+            content: "暂无日志";
+            color: var(--muted);
+        }
+
+        #log::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #log::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .16);
+            border-radius: 999px;
+        }
+
+        .ok {
+            color: var(--ok);
+        }
+
+        .err {
+            color: var(--err);
+        }
+
+        .get {
+            color: #9fb0cc;
+        }
+
+        @media (max-width: 420px) {
+            .row {
+                grid-template-columns: 26px minmax(0, 1fr) 68px;
+                gap: 9px;
+            }
+
+            .hex {
+                font-size: 22px;
+            }
+
+            .swatch {
+                width: 78px;
+                height: 78px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="head">
+            <div class="brand">
+                <span class="logo"></span>
+                <div>
+                    <h1>应援棒控制</h1>
+                    <p class="sub">WEB BLUETOOTH · RGB CONSOLE</p>
+                </div>
+            </div>
+            <div class="status" id="status">
+                <i class="dot"></i><span id="status_text">未连接</span>
+            </div>
+        </div>
+
+        <div class="card preview-card">
+            <div class="swatch" id="swatch"></div>
+            <div class="preview-info">
+                <div class="hex" id="hex">#FFFFFF</div>
+                <div class="rgb-line" id="rgb_line">rgb(255, 255, 255)</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>通道调节</span>
+                <span class="hint">拖动滑杆，或直接输入 0–255</span>
+            </div>
+
+            <div class="row" data-ch="r">
+                <span class="tag">R</span>
+                <input type="range" id="r" min="0" max="255" step="1" value="255" aria-label="红色通道">
+                <input type="number" id="r_num" class="num" min="0" max="255" step="1" value="255"
+                    inputmode="numeric" aria-label="红色数值">
+            </div>
+
+            <div class="row" data-ch="g">
+                <span class="tag">G</span>
+                <input type="range" id="g" min="0" max="255" step="1" value="255" aria-label="绿色通道">
+                <input type="number" id="g_num" class="num" min="0" max="255" step="1" value="255"
+                    inputmode="numeric" aria-label="绿色数值">
+            </div>
+
+            <div class="row" data-ch="b">
+                <span class="tag">B</span>
+                <input type="range" id="b" min="0" max="255" step="1" value="255" aria-label="蓝色通道">
+                <input type="number" id="b_num" class="num" min="0" max="255" step="1" value="255"
+                    inputmode="numeric" aria-label="蓝色数值">
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn primary" id="send">发送当前颜色</button>
+            <button class="btn" id="connect">配对</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span>预设颜色</span></div>
+            <div class="presets" id="presets">
+                <button class="pre-color" data-rgb="102,204,255">天依蓝</button>
+                <button class="pre-color" data-rgb="255,0,0">红</button>
+                <button class="pre-color" data-rgb="255,140,0">橙</button>
+                <button class="pre-color" data-rgb="255,230,0">黄</button>
+                <button class="pre-color" data-rgb="52,224,138">绿</button>
+                <button class="pre-color" data-rgb="0,230,255">青</button>
+                <button class="pre-color" data-rgb="40,90,255">蓝</button>
+                <button class="pre-color" data-rgb="170,80,255">紫</button>
+                <button class="pre-color" data-rgb="255,80,180">粉</button>
+                <button class="pre-color" data-rgb="255,255,255">白</button>
+                <button class="pre-color" data-rgb="255,200,140">暖白</button>
+                <button class="pre-color" data-rgb="0,0,0">关灯</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>日志</span>
+                <button class="btn tiny" id="clear">清空</button>
+            </div>
+            <pre id="log"></pre>
+        </div>
+    </div>
+
+    <script>
+        //服务uuid
+        const service_uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase()
+        const tx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase()
+        const rx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase()
+
+        //获取控件
+        const connect_btn = document.getElementById("connect")
+        const send_btn = document.getElementById("send")
+        const clear_btn = document.getElementById("clear")
+        const log_area = document.getElementById("log")
+        const input_r = document.getElementById("r")
+        const input_g = document.getElementById("g")
+        const input_b = document.getElementById("b")
+
+        const status_box = document.getElementById("status")
+        const status_text = document.getElementById("status_text")
+        const swatch = document.getElementById("swatch")
+        const hex_text = document.getElementById("hex")
+        const rgb_line = document.getElementById("rgb_line")
+        const preset_btns = document.querySelectorAll(".pre-color")
+
+        let device = null
+        let rxChar = null
+        let txChar = null
+        let connected = false
+
+        /* ============ UI 联动部分 ============ */
+
+        const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
+
+        // 每个通道：滑杆 + 数字框成对绑定。src 表示"是谁在动"，避免两边互相覆盖
+        const channels = [
+            { name: 'r', slider: input_r, num: document.getElementById("r_num") },
+            { name: 'g', slider: input_g, num: document.getElementById("g_num") },
+            { name: 'b', slider: input_b, num: document.getElementById("b_num") },
+        ]
+
+        function paint(ch) { // 把滑杆已填充的比例写进 CSS 变量 --p
+            const pct = (Number(ch.slider.value) / Number(ch.slider.max || 255)) * 100
+            ch.slider.style.setProperty('--p', pct + '%')
+        }
+
+        function current_rgb() {
+            return channels.map(ch => Number(ch.slider.value) || 0)
+        }
+
+        function update_preview() { // 预览色块 + HEX / RGB 文本 + 预设高亮
+            const [r, g, b] = current_rgb()
+            const css = `rgb(${r}, ${g}, ${b})`
+            const hex = "#" + [r, g, b].map(v => clamp(v, 0, 255).toString(16).padStart(2, "0")).join("").toUpperCase()
+
+            swatch.style.background = css
+            swatch.style.color = css // 用 currentColor 发光
+            hex_text.textContent = hex
+            rgb_line.textContent = `rgb(${r}, ${g}, ${b})`
+
+            preset_btns.forEach(btn => {
+                const [pr, pg, pb] = btn.dataset.rgb.split(",").map(Number)
+                btn.classList.toggle("active", pr === r && pg === g && pb === b)
+            })
+        }
+
+        function refresh() {
+            channels.forEach(paint)
+            update_preview()
+        }
+
+        // 滑杆 -> 数字框
+        function on_slider_input(ch) {
+            ch.num.value = ch.slider.value
+            ch.num.classList.remove("bad")
+            paint(ch)
+            update_preview()
+        }
+
+        // 数字框 -> 滑杆。commit=true 时（回车/失焦）把内容规整为 0–255 的整数
+        function on_num_input(ch, commit) {
+            const raw = ch.num.value.trim()
+
+            if (raw === "") { // 允许清空后再输入，此时不动滑杆
+                if (commit) ch.num.value = ch.slider.value
+                return
+            }
+
+            const n = Number(raw)
+            if (!Number.isFinite(n)) {
+                ch.num.classList.add("bad")
+                if (commit) ch.num.value = ch.slider.value
+                return
+            }
+
+            const v = clamp(Math.round(n), Number(ch.slider.min || 0), Number(ch.slider.max || 255))
+            ch.num.classList.toggle("bad", n !== v) // 超出范围时提示（红色），失焦后自动修正
+            ch.slider.value = v
+            paint(ch)
+            update_preview()
+
+            if (commit) ch.num.value = v
+        }
+
+        channels.forEach(ch => {
+            ch.slider.addEventListener("input", () => on_slider_input(ch))
+
+            ch.num.addEventListener("input", () => on_num_input(ch, false))
+            ch.num.addEventListener("change", () => on_num_input(ch, true))
+            ch.num.addEventListener("blur", () => {
+                ch.num.classList.remove("bad")
+                on_num_input(ch, true)
+            })
+            ch.num.addEventListener("focus", () => ch.num.select()) // 聚焦全选，直接打字即可覆盖
+
+            // 键盘编辑：↑↓ 步进 1（按住 Shift 步进 10），回车确认，Esc 还原
+            ch.num.addEventListener("keydown", e => {
+                if (e.key === "Enter") {
+                    ch.num.classList.remove("bad")
+                    on_num_input(ch, true)
+                    ch.num.blur()
+                    return
+                }
+                if (e.key === "Escape") {
+                    ch.num.value = ch.slider.value
+                    ch.num.classList.remove("bad")
+                    ch.num.blur()
+                    return
+                }
+
+                let delta = 0
+                if (e.key === "ArrowUp") delta = e.shiftKey ? 10 : 1
+                else if (e.key === "ArrowDown") delta = -(e.shiftKey ? 10 : 1)
+                else if (e.key === "PageUp") delta = 10
+                else if (e.key === "PageDown") delta = -10
+                else return
+
+                e.preventDefault() // 自己算，避免浏览器原生步进造成不一致
+                const typed = Number(ch.num.value)
+                const base = ch.num.value.trim() !== "" && Number.isFinite(typed)
+                    ? typed
+                    : Number(ch.slider.value)
+                const v = clamp(base + delta, 0, 255)
+
+                ch.num.value = v
+                ch.num.classList.remove("bad")
+                ch.slider.value = v
+                paint(ch)
+                update_preview()
+            })
+        })
+
+        function set_rgb(r, g, b) { // 预设颜色 / 初始化统一走这里
+            const vals = [r, g, b]
+            channels.forEach((ch, i) => {
+                const v = clamp(Math.round(vals[i]), 0, 255)
+                ch.slider.value = v
+                ch.num.value = v
+                ch.num.classList.remove("bad")
+                paint(ch)
+            })
+            update_preview()
+        }
+
+        function set_status(text, kind) { // 右上角连接状态
+            status_text.textContent = text
+            status_box.className = "status" + (kind ? " " + kind : "")
+        }
+
+        /* ============ 蓝牙部分（逻辑保持原样） ============ */
+
+        function log(msg, cls) { // 通知
+            let time = new Date().toTimeString().slice(0, 8)
+            let child = document.createElement("div")
+            if (cls) child.className = cls
+            child.innerText = "[" + time + "]" + msg
+            log_area.appendChild(child)
+            log_area.scrollTop = log_area.scrollHeight
+        }
+
+        async function connect() {
+            try {
+                device = await navigator.bluetooth.requestDevice(
+                    {
+                        acceptAllDevices: true,
+                        optionalServices: [service_uuid],
+                    }
+                )
+            } catch (e) {
+                log("取消了连接", "err")
+                set_status("未连接")
+                return
+            }
+
+            device.addEventListener("gattserverdisconnected", () => {
+                connected = false
+                set_status("已断开", "err")
+                log("断开连接", "err")
+            })
+
+            await connect_gatt()
+        }
+
+        async function connect_gatt() {
+            try {
+                set_status("连接中…", "wait")
+                const server = await device.gatt.connect() // 连接gatt服务
+                const svc = await server.getPrimaryService(service_uuid) // 获取服务
+                rxChar = await svc.getCharacteristic(rx_uuid); // 接收
+                txChar = await svc.getCharacteristic(tx_uuid); // 发送
+
+                rxChar.startNotifications() //订阅消息
+                rxChar.addEventListener("characteristicvaluechanged", (event) => {
+                    let textdecoder = new TextDecoder()
+                    value = textdecoder.decode(event.target.value).trim()
+                    log(value, 'get')
+                })
+
+                connected = true
+                set_status(device.name || "已连接", "ok")
+                log("已连接：" + (device.name || "(无名设备)"), "ok");
+            } catch (e) {
+                connected = false
+                set_status("连接失败", "err")
+                log("连接失败:" + e.message, "err")
+            }
+        }
+
+        async function send_color() {
+            let r = input_r.value
+            let g = input_g.value
+            let b = input_b.value
+
+            let cmd = `${r}, ${g}, ${b}`
+            if (!txChar) {
+                log("设备未连接", "err")
+                return
+            }
+            try {
+                await txChar.writeValue(new TextEncoder().encode(cmd))
+                log("->" + cmd)
+            } catch (e) {
+                log("发送失败:" + e.message, "err")
+            }
+        }
+
+        connect_btn.addEventListener("click", connect)
+        send_btn.addEventListener("click", send_color)
+
+        clear_btn.addEventListener("click", () => {
+            log_area.innerHTML = ""
+        })
+
+        preset_btns.forEach(btn => {
+            const [r, g, b] = btn.dataset.rgb.split(",").map(Number);
+
+            // 给每个预设按钮画上对应的色点
+            const dot = document.createElement("i")
+            dot.style.background = `rgb(${r}, ${g}, ${b})`
+            dot.style.color = `rgb(${r}, ${g}, ${b})`
+            btn.prepend(dot)
+
+            btn.addEventListener('click', () => {
+                set_rgb(r, g, b)
+            })
+        })
+
+        // 初始化：让界面数字、滑杆填充、预览与 HTML 里的初始值保持一致
+        set_rgb(255, 255, 255)
+        set_status("未连接")
+    </script>
+</body>
+
+</html>
