@@ -838,7 +838,7 @@
             }else{
                 let secret = localStorage.getItem("bluetooth_auth");
 
-                if (local_tried && !secret){
+                if (local_tried || !secret){
                     let secret = prompt("请输入密钥以激活").trim()
                     localStorage.setItem("bluetooth_auth", secret)
                 }else{
